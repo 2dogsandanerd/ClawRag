@@ -24,6 +24,7 @@ class LLMConfig:
     chroma_path: str
     collection_name: str
     project_collection_name: str
+    base_url: Optional[str] = None  # Für OpenAI-kompatible Server
 
 @dataclass
 class WebSocketConfig:
@@ -109,6 +110,9 @@ def get_config(use_hot_reload: bool = True) -> LLMConfig:
             collection_name = config_dict.get("CHROMA_COLLECTION", "mail_knowledge_base")
             project_collection_name = config_dict.get("PROJECT_COLLECTION", "project_context")
 
+            # Hole base_url für OpenAI-kompatible Server
+            base_url = config_dict.get("OPENAI_BASE_URL") or os.getenv("OPENAI_BASE_URL")
+
             return LLMConfig(
                 provider=provider,
                 model=model,
@@ -117,7 +121,8 @@ def get_config(use_hot_reload: bool = True) -> LLMConfig:
                 embedding_model=embedding_model,
                 chroma_path=chroma_path,
                 collection_name=collection_name,
-                project_collection_name=project_collection_name
+                project_collection_name=project_collection_name,
+                base_url=base_url
             )
         except ImportError:
             # Fallback to os.getenv if config_service not available
@@ -144,6 +149,9 @@ def get_config(use_hot_reload: bool = True) -> LLMConfig:
     collection_name = os.getenv("CHROMA_COLLECTION", "mail_knowledge_base")
     project_collection_name = os.getenv("PROJECT_COLLECTION", "project_context")
 
+    # Hole base_url für OpenAI-kompatible Server
+    base_url = os.getenv("OPENAI_BASE_URL")
+
     return LLMConfig(
         provider=provider,
         model=model,
@@ -152,7 +160,8 @@ def get_config(use_hot_reload: bool = True) -> LLMConfig:
         embedding_model=embedding_model,
         chroma_path=chroma_path,
         collection_name=collection_name,
-        project_collection_name=project_collection_name
+        project_collection_name=project_collection_name,
+        base_url=base_url
     )
 
 def _get_api_key(provider: str) -> Optional[str]:
@@ -323,6 +332,15 @@ def create_llm_instances(config: LLMConfig, use_hot_reload: bool = True) -> Dict
             api_key=config.api_key,
             temperature=0.1  # Niedrige Temperatur für fokussierte Antworten
         )
+    elif config.provider == "openai_compatible":
+        from llama_index.llms.openai import OpenAI
+        # Für OpenAI-kompatible Server wie LM Studio, Llama.cpp, etc.
+        instances["llm"] = OpenAI(
+            model=config.model,
+            api_key=config.api_key or "not-required",  # Manche OpenAI-kompatible Server benötigen keinen API-Schlüssel
+            base_url=config.base_url,  # Basis-URL des OpenAI-kompatiblen Servers
+            temperature=0.1
+        )
 
     # Create embeddings
     if config.embedding_provider == "ollama":
@@ -336,6 +354,13 @@ def create_llm_instances(config: LLMConfig, use_hot_reload: bool = True) -> Dict
         instances["embeddings"] = OpenAIEmbedding(
             model=config.embedding_model,
             api_key=_get_api_key(config.embedding_provider)
+        )
+    elif config.embedding_provider == "openai_compatible":
+        from llama_index.embeddings.openai import OpenAIEmbedding
+        instances["embeddings"] = OpenAIEmbedding(
+            model=config.embedding_model,
+            api_key=config.api_key or "not-required",
+            base_url=config.base_url
         )
 
     return instances
