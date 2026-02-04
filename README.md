@@ -18,7 +18,7 @@ Extracted from our **Fortress Core V4 (Enterprise Manifest)**. This Community Ed
 - **🔍 Hybrid Search**: Vector similarity + BM25 keyword search with Reciprocal Rank Fusion
 - **📦 ChromaDB 0.5.23**: Vector storage with connection pooling and health checks
 - **🚀 LlamaIndex 0.12.9**: Advanced retrieval pipelines
-- **🎛️ Multi-LLM Support**: Ollama (default), OpenAI, Anthropic, Gemini
+- **🎛️ Multi-LLM Support**: Ollama (default), OpenAI, Anthropic, Gemini, and OpenAI-compatible servers (LM Studio, Llama.cpp, Koboldcpp, etc.)
 - 🖥️ **Lightweight UI**: Zero-build, single-file HTML/JS dashboard with live system logs (600px scrollable, no auto-scroll)
 - **🐳 Docker-First**: Production-ready deployment with hot-reload support
 - **🤖 MCP Integration**: Built-in Model Context Protocol server for [OpenClaw](https://github.com/2dogsandanerd/openclaw)
@@ -120,7 +120,21 @@ OPENAI_API_KEY=sk-proj-...
 
 Add your API keys to `docker-compose.yml` or export them in your shell before starting.
 
-### 3. Integration with OpenClaw / ClawBot
+### 3. Local AI Servers (LM Studio, Llama.cpp, Koboldcpp, etc.)
+For users who prefer local AI servers that offer an OpenAI-compatible API. This includes popular options like LM Studio, Llama.cpp, and Koboldcpp.
+
+**Configuration in `.env`:**
+```bash
+# Example for LM Studio or similar OpenAI-compatible server
+LLM_PROVIDER=openai_compatible
+LLM_MODEL=your-local-model-name
+OPENAI_BASE_URL=http://localhost:1234/v1  # Adjust to your server's address
+# OPENAI_API_KEY=not-needed-for-local  # Many local servers don't require an API key
+```
+
+Make sure your local AI server is running and accessible at the specified URL before starting ClawRAG.
+
+### 4. Integration with OpenClaw / ClawBot
 This system exposes a stateless REST API that serves as the long-term memory for your agents.
 
 **MCP Integration (Recommended):**
@@ -412,11 +426,12 @@ Environment variables configured in `.env` file:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_PROVIDER` | `ollama` | LLM provider (ollama, openai, anthropic, gemini) |
+| `LLM_PROVIDER` | `ollama` | LLM provider (ollama, openai, anthropic, gemini, openai_compatible) |
 | `LLM_MODEL` | `llama3.1:8b-instruct-q4_k_m` | Model name for selected provider |
 | `EMBEDDING_PROVIDER` | `ollama` | Embedding provider (usually matches LLM) |
 | `EMBEDDING_MODEL` | `nomic-embed-text` | Embedding model name |
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama connection URL (set to your Ollama host IP if needed) |
+| `OPENAI_BASE_URL` | (none) | Base URL for OpenAI-compatible servers (e.g., LM Studio, Llama.cpp) when LLM_PROVIDER=openai_compatible |
 | `CHROMA_HOST` | `chroma_running` | ChromaDB container/service name |
 | `CHROMA_PORT` | `8000` | ChromaDB port |
 | `DOCS_DIR` | `./data/docs` | Host directory to mount as `/host_root` for folder ingestion |
@@ -426,6 +441,7 @@ Environment variables configured in `.env` file:
 
 **Important Notes:**
 - **OLLAMA_HOST**: If `host.docker.internal` doesn't work (rootless Docker), set this to your actual host IP (e.g., `http://192.168.1.100:11434`)
+- **OPENAI_BASE_URL**: Used when LLM_PROVIDER=openai_compatible for connecting to local AI servers like LM Studio, Llama.cpp, etc.
 - **DOCS_DIR**: Must be set to an existing directory with your documents for folder ingestion to work
 - **ChromaDB**: Expects ChromaDB running as a separate container (see docker-compose.yml for external ChromaDB setup)
 
