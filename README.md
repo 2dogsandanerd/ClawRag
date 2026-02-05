@@ -1,5 +1,6 @@
 # ClawRAG - The Brain for OpenClaw
 
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/2dogsandanerd/ClawRag/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/)
@@ -22,7 +23,8 @@ Extracted from our **Fortress Core V4 (Enterprise Manifest)**. This Community Ed
 - 🖥️ **Lightweight UI**: Zero-build, single-file HTML/JS dashboard with live system logs (600px scrollable, no auto-scroll)
 - **🐳 Docker-First**: Production-ready deployment with hot-reload support
 - **🤖 MCP Integration**: Built-in Model Context Protocol server for [OpenClaw](https://github.com/2dogsandanerd/openclaw)
-- **Folder Ingestion**: Bulk document processing with real-time progress tracking
+- **📁 Folder Ingestion**: Bulk document processing with real-time progress tracking
+- **🧠 Intelligent Document Routing**: Automatic classification and routing of documents to optimal processing pipelines based on content analysis
 
 ---
 
@@ -371,6 +373,27 @@ const result = await queryKnowledgeBase("What is RAG?");
 console.log(result.answer);
 ```
 
+### Intelligent Document Routing
+
+ClawRAG features an intelligent document routing system that automatically classifies and routes documents to optimal processing pipelines based on content analysis. This system enhances processing efficiency and accuracy by applying document-specific strategies.
+
+**Supported Document Types:**
+- Legal Documents (contracts, agreements) → Specialized clause extraction and validation
+- Financial Reports (invoices, statements) → Amount and vendor identification
+- Technical Manuals → Procedure and warning extraction
+- Source Code → Syntax preservation and function identification
+- Generic Documents → Standard processing pipeline
+
+**Configuration:**
+The routing behavior can be customized through the `document_routing_rules.json` file, allowing fine-tuning of processing parameters for different document categories.
+
+**API Access:**
+The routing system can be accessed programmatically via the `/api/v1/rag/routing/analyze_and_route` endpoint, which returns detailed routing decisions including:
+- Target collection recommendation
+- Optimal chunk size and overlap
+- Required preprocessing and postprocessing steps
+- Validation requirements based on document type and confidence
+
 ### Full API Documentation
 
 For complete API documentation including all endpoints, parameters, and response schemas:
@@ -405,7 +428,7 @@ For complete API documentation including all endpoints, parameters, and response
 **Backend (`backend/src/`):**
 - `api/v1/rag/` - API endpoints (ingestion, query, collections, documents)
 - `core/` - ChromaDB manager, Docling loader, retrievers, query engine
-- `services/` - Document processing, classification, generators
+- `services/` - Document processing, classification, generators, intelligent routing
 
 **Core Patterns:**
 - **Singleton**: ChromaManager for single connection instance
@@ -644,6 +667,11 @@ Full API documentation available at http://localhost:8081/docs
 - `POST /api/v1/rag/ingestion/ingest-batch` - Batch ingestion
 - `POST /api/v1/rag/ingestion/ingest-folder` - Ingest folder synchronously
 
+**Routing:**
+- `POST /api/v1/rag/routing/analyze_and_route` - Analyze document and determine optimal routing
+- `GET /api/v1/rag/routing/rules` - Retrieve current routing rules
+- `POST /api/v1/rag/routing/update_rules` - Update routing rules
+
 ---
 
 ## 🏢 Edition Comparison
@@ -658,6 +686,7 @@ Full API documentation available at http://localhost:8081/docs
 - ✅ Formats: PDF, Markdown, TXT, DOCX (via Docling)
 - ✅ Hybrid Search: Vector + BM25 (RRF fusion)
 - ✅ Basic Classification: Heuristic-based
+- ✅ Intelligent Document Routing: Content-based automatic routing to optimal processing pipelines
 - ✅ Full source code access
 - ✅ **MCP Integration**: Native OpenClaw integration via Model Context Protocol
 - ❌ No Solomon Consensus Engine
@@ -711,6 +740,10 @@ Contributions welcome! This is the Community Edition - we encourage:
 **Please note:** Advanced features (ML classification, reranking, multi-collection) are part of paid editions. Community contributions focus on core RAG functionality.
 
 ---
+
+## 📋 Changelog
+
+See the [CHANGELOG](CHANGELOG.md) for a complete list of changes.
 
 ## 📜 License
 
@@ -779,4 +812,3 @@ If you use this tool in research or production, please cite:
 **Built with ❤️ by developers who needed a solid RAG foundation.**
 
 *If you find this useful, star ⭐ the repo and share with others!*
-# ClawRag
