@@ -14,7 +14,7 @@ from pathlib import Path
 import json
 
 from src.core.config import get_config, LLMConfig
-from src.core.llm_singleton import LLMSingleton
+from src.core.llm_singleton import get_llm
 from src.services.folder_scanner import scan_folder, FileInfo
 from src.utils.llm_response_parser import parse_json_response_with_llm
 
@@ -49,10 +49,16 @@ class DataClassifierService:
     TABLE_EXTENSIONS = {'.xlsx', '.xls', '.csv', '.tsv'}
     DOCLING_EXTENSIONS = {'.pdf', '.docx', '.pptx', '.md', '.txt', '.rst'}
     
-    def __init__(self, llm_singleton: LLMSingleton, llm_config: LLMConfig):
-        self.llm_singleton = llm_singleton
+    def __init__(self, llm_config: LLMConfig):
         self.llm_config = llm_config
-        self.llm_client = llm_singleton.get_client()
+        self._llm_client = None
+
+    @property
+    def llm_client(self):
+        """Lazy load LLM client."""
+        if self._llm_client is None:
+            self._llm_client = get_llm()
+        return self._llm_client
 
     async def analyze_folder_contents(
         self,
@@ -310,6 +316,5 @@ class DataClassifierService:
 
 # Dependency for FastAPI
 async def get_data_classifier_service() -> DataClassifierService:
-    llm_singleton = LLMSingleton()
     llm_config = get_config()
-    return DataClassifierService(llm_singleton, llm_config)
+    return DataClassifierService(llm_config)

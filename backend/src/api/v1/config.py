@@ -8,6 +8,7 @@ from loguru import logger
 from src.services.config_service import config_service as default_config_service, ConfigService
 from src.services.connection_service import connection_service as default_connection_service, ConnectionService
 from src.core.services.settings_service import SettingsService
+from src.core.system_check import SystemHealthCheck
 
 router = APIRouter()
 
@@ -76,6 +77,21 @@ async def get_available_models():
                     })
     except Exception as e:
         logger.warning(f"Could not fetch Ollama models: {e}")
+
+    # 1.5 OpenAI-Compatible Models
+    openai_base_url = os.getenv("OPENAI_BASE_URL")
+    if openai_base_url:
+        try:
+            res = await SystemHealthCheck.check_openai_compatible(openai_base_url, os.getenv("OPENAI_API_KEY", "not-required"))
+            if res["status"] == "ok":
+                for model_id in res.get("models", []):
+                    models.append({
+                        "id": model_id,
+                        "name": f"OpenAI-Comp: {model_id}",
+                        "provider": "openai_compatible"
+                    })
+        except Exception as e:
+            logger.warning(f"Could not fetch OpenAI-compatible models: {e}")
 
     # 2. Add OpenAI/Anthropic placeholders if keys are present (or always show them as options)
     models.append({"id": "gpt-4", "name": "OpenAI GPT-4", "provider": "openai"})

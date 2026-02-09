@@ -69,15 +69,50 @@ class ConnectionService:
             self.logger.error(f"ChromaDB connection test failed: {e}")
             return {"success": False, "message": str(e), "duration": duration}
 
+    async def test_openai_compatible_connection(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Tests connection to an OpenAI-compatible server."""
+        start_time = time.time()
+        base_url = config.get("OPENAI_BASE_URL")
+        if not base_url:
+            return {"success": False, "message": "OPENAI_BASE_URL not configured.", "duration": 0}
+            
+        api_key = config.get("OPENAI_API_KEY", "not-required")
+        
+        try:
+            from src.core.system_check import SystemHealthCheck
+            res = await SystemHealthCheck.check_openai_compatible(base_url, api_key)
+            duration = time.time() - start_time
+            if res["status"] == "ok":
+                return {
+                    "success": True,
+                    "message": f"OpenAI-compatible connection to {base_url} successful.",
+                    "duration": duration,
+                    "details": f"Found {res['count']} models."
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": res["message"],
+                    "duration": duration
+                }
+        except Exception as e:
+            duration = time.time() - start_time
+            self.logger.error(f"OpenAI-compatible connection test failed: {e}")
+            return {"success": False, "message": str(e), "duration": duration}
+
     async def test_all_connections(self, config: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Tests all relevant connections concurrently."""
         self.logger.info("Testing all connections...")
         tasks = {
             "ollama": self.test_ollama_connection(config),
             "chroma": self.test_chroma_connection(config),
-            # Add other tests like email here in the future
         }
-
+        
+        # Add optional provider tests
+        provider = config.get("LLM_PROVIDER")
+        if provider == "openai_compatible":
+            tasks["openai_compatible"] = self.test_openai_compatible_connection(config)
+        
         results = await asyncio.gather(*tasks.values())
         
         final_results = []

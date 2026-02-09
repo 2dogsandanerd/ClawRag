@@ -247,6 +247,18 @@ Everything runs in Docker containers:
 
 ## 🚨 Troubleshooting
 
+### LLM Connection issues
+
+If you use an `openai_compatible` provider (LM Studio, LocalAI, etc.) and can't connect:
+
+1. **Check Base URL**: Ensure your `OPENAI_BASE_URL` is correct. The system automatically appends `/v1` if missing.
+2. **Onboarding Wizard**: Run the **System Check** in the UI. it provides detailed error messages for connection failures.
+3. **Backend Logs**: Check initialization logs for specific URL and model info:
+   ```bash
+   docker compose logs -f backend | grep "LLM"
+   ```
+4. **Network**: If running LM Studio on the host and ClawRAG in Docker, use `http://host.docker.internal:1234/v1` instead of `localhost`.
+
 ### App won't start
 
 ```bash

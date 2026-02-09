@@ -5,6 +5,8 @@ from .models import WizardStep, WizardState, SystemCheckResponse, SystemCheckRes
 import httpx
 import os
 from src.core.chroma_manager import get_chroma_manager
+from src.core.system_check import SystemHealthCheck
+from src.core.config import get_config
 
 router = APIRouter()
 
@@ -42,32 +44,38 @@ async def run_system_check():
         overall_status = "error"
         checks.append(SystemCheckResult(component="ChromaDB", status="error", message="Connection failed", details=str(e)))
 
-    # 2. Check Ollama
-    # Try Docker host first, then localhost
-    ollama_hosts = [
-        os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434"),
-        "http://localhost:11434"
-    ]
+    # 2. Check LLM Provider
+    config = get_config()
+    provider = config.provider
     
-    ollama_ok = False
-    last_error = None
+    if provider == "ollama":
+        ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        res = await SystemHealthCheck.check_ollama(ollama_host)
+        if res["status"] == "ok":
+            checks.append(SystemCheckResult(component=f"LLM ({provider})", status="ok", message=f"Connected to {ollama_host}", details=f"Models: {', '.join(res['models'][:5])}"))
+        else:
+            overall_status = "error"
+            checks.append(SystemCheckResult(component=f"LLM ({provider})", status="error", message=res["message"]))
     
-    for host in ollama_hosts:
-        try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                resp = await client.get(f"{host}/api/tags")
-                if resp.status_code == 200:
-                     checks.append(SystemCheckResult(component="Ollama", status="ok", message=f"Connected to {host}"))
-                     ollama_ok = True
-                     break
-                else:
-                     last_error = f"Status {resp.status_code}: {resp.text}"
-        except Exception as e:
-            last_error = str(e)
+    elif provider == "openai_compatible":
+        base_url = config.base_url
+        res = await SystemHealthCheck.check_openai_compatible(base_url, config.api_key)
+        if res["status"] == "ok":
+            checks.append(SystemCheckResult(component=f"LLM ({provider})", status="ok", message=f"Connected to {base_url}", details=f"Models: {', '.join(res['models'][:5])}"))
+        else:
+            overall_status = "error"
+            checks.append(SystemCheckResult(component=f"LLM ({provider})", status="error", message=res["message"]))
     
-    if not ollama_ok:
-        overall_status = "error"
-        checks.append(SystemCheckResult(component="Ollama", status="error", message="Connection failed", details=last_error))
+    elif provider in ["openai", "gemini", "anthropic"]:
+        # For cloud providers, we just check if API key is set
+        if config.api_key:
+            checks.append(SystemCheckResult(component=f"LLM ({provider})", status="ok", message=f"API Key configured for {provider}"))
+        else:
+            overall_status = "error"
+            checks.append(SystemCheckResult(component=f"LLM ({provider})", status="error", message=f"API Key missing for {provider}"))
+    
+    else:
+        checks.append(SystemCheckResult(component="LLM", status="warning", message=f"Unknown provider: {provider}"))
 
     return SystemCheckResponse(overall_status=overall_status, checks=checks)
 

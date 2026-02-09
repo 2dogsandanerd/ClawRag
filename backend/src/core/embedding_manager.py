@@ -266,6 +266,9 @@ class EmbeddingManager:
             
             if not base_url:
                 logger.warning("OPENAI_BASE_URL not set for openai_compatible provider")
+            elif not base_url.endswith("/v1") and not base_url.endswith("/v1/"):
+                base_url = base_url.rstrip("/") + "/v1"
+                logger.info(f"Appended /v1 to embedding base_url: {base_url}")
                 
             embeddings = OpenAIEmbedding(
                 model=model,

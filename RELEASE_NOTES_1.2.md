@@ -37,6 +37,14 @@ docker compose up -d
 - Better configuration guidance for users
 - More robust retrieval pipeline
 
+## 🛠️ OpenAI-Compatible Provider Improvements
+
+- **Auto-URL-Correction**: The system now automatically appends `/v1` to the `OPENAI_BASE_URL` if missing (common requirement for LM Studio, LocalAI, etc.).
+- **Diagnostic System Check**: Added a dedicated connection test for OpenAI-compatible endpoints in the Onboarding Wizard.
+- **Enhanced Logging**: Detailed initialization logs now show exactly which URL and model are being used.
+- **Model Discovery**: The application can now fetch available models from custom OpenAI-compatible endpoints.
+- **Fixed DataClassifierService**: Resolved a crash when using LLM-based classification with custom providers.
+
 ## 🙏 Thank You
 
 Thanks to the community for reporting these issues. This release restores the core functionality that was broken in version 1.1.x.
