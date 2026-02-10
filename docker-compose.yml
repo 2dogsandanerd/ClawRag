@@ -81,6 +81,8 @@ services:
     container_name: clawrag-backend
     expose:
       - "8080"
+    env_file:
+      - .env  # Load .env file into container
     environment:
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000

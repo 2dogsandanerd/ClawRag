@@ -8,8 +8,15 @@ class ConfigService:
     """Manages loading and saving of .env file configurations."""
 
     def __init__(self, dotenv_path: str = ".env"):
-        self.dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../..", dotenv_path)
+        # Suchen zuerst im aktuellen Arbeitsverzeichnis (für Docker-Container)
+        self.dotenv_path = os.path.abspath(dotenv_path)
         logger.debug(f"ConfigService initialized. Looking for .env at: {self.dotenv_path}")
+        
+        # Falls nicht gefunden, suche relativ zum Skript (für lokale Entwicklung)
+        if not os.path.exists(self.dotenv_path):
+            self.dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../..", dotenv_path)
+            logger.debug(f"ConfigService fallback. Looking for .env at: {self.dotenv_path}")
+        
         if not os.path.exists(self.dotenv_path):
             logger.warning(f".env file not found at {self.dotenv_path}. Creating an empty one.")
             open(self.dotenv_path, 'a').close()
