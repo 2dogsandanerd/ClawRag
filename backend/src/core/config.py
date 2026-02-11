@@ -310,156 +310,84 @@ def create_llm_instances(config: LLMConfig, use_hot_reload: bool = True) -> Dict
         
 
         # Import and create LLM instance based on provider
-
         if config.provider == "ollama":
-
             from llama_index.llms.ollama import Ollama
-
             logger.info(f"Ollama base_url: {ollama_host}")
-
             instances["llm"] = Ollama(
-
                 model=config.model,
-
                 base_url=ollama_host,
-
                 temperature=0.1,  # Niedrige Temperatur für fokussierte Antworten
-
                 request_timeout=300.0, # 5 minutes timeout for slower models
-
                 context_window=8192  # Limit context window to prevent OOM on 8GB GPUs
-
             )
-
         elif config.provider == "openai":
-
             from llama_index.llms.openai import OpenAI
-
             instances["llm"] = OpenAI(
-
                 model=config.model,
-
                 api_key=config.api_key,
-
                 temperature=0.1  # Niedrige Temperatur für fokussierte Antworten
-
             )
-
         elif config.provider == "gemini":
-
             from llama_index.llms.gemini import Gemini
-
             instances["llm"] = Gemini(
-
                 model=config.model,
-
                 api_key=config.api_key,
-
                 temperature=0.1  # Niedrige Temperatur für fokussierte Antworten
-
             )
-
         elif config.provider == "anthropic":
-
             from llama_index.llms.anthropic import Anthropic
-
             instances["llm"] = Anthropic(
-
                 model=config.model,
-
                 api_key=config.api_key,
-
                 temperature=0.1  # Niedrige Temperatur für fokussierte Antworten
-
             )
+        elif config.provider == "openai_compatible":
+            from llama_index.llms.openai import OpenAI
+            # Für OpenAI-kompatible Server wie LM Studio, Llama.cpp, etc.
+            base_url = config.base_url
+            if base_url and not base_url.endswith("/v1") and not base_url.endswith("/v1/"):
+                base_url = base_url.rstrip("/") + "/v1"
+                logger.info(f"Appended /v1 to base_url: {base_url}")
 
-            elif config.provider == "openai_compatible":
-
-                from llama_index.llms.openai import OpenAI
-
-                # Für OpenAI-kompatible Server wie LM Studio, Llama.cpp, etc.
-
-                base_url = config.base_url
-
-                if base_url and not base_url.endswith("/v1") and not base_url.endswith("/v1/"):
-
-                    base_url = base_url.rstrip("/") + "/v1"
-
-                    logger.info(f"Appended /v1 to base_url: {base_url}")
-
-                    
-
-                logger.info(f"Configuring OpenAI-compatible LLM at {base_url} (Model: {config.model})")
-
-                instances["llm"] = OpenAI(
-
-                    model=config.model,
-
-                    api_key=config.api_key or "not-required",  # Manche OpenAI-kompatible Server benötigen keinen API-Schlüssel
-
-                    base_url=base_url,  # Basis-URL des OpenAI-kompatiblen Servers
-
-                    temperature=0.1
-
-                )
+            logger.info(f"Configuring OpenAI-compatible LLM at {base_url} (Model: {config.model})")
+            instances["llm"] = OpenAI(
+                model=config.model,
+                api_key=config.api_key or "not-required",  # Manche OpenAI-kompatible Server benötigen keinen API-Schlüssel
+                base_url=base_url,  # Basis-URL des OpenAI-kompatiblen Servers
+                temperature=0.1
+            )
 
         
 
     
 
         # Create embeddings
-
         logger.info(f"Initializing embeddings with provider: {config.embedding_provider}, model: {config.embedding_model}")
-
         if config.embedding_provider == "ollama":
-
             from llama_index.embeddings.ollama import OllamaEmbedding
-
             instances["embeddings"] = OllamaEmbedding(
-
                 model_name=config.embedding_model,
-
                 base_url=ollama_host
-
             )
-
         elif config.embedding_provider == "openai":
-
             from llama_index.embeddings.openai import OpenAIEmbedding
-
             instances["embeddings"] = OpenAIEmbedding(
-
                 model=config.embedding_model,
-
                 api_key=_get_api_key(config.embedding_provider)
-
             )
+        elif config.embedding_provider == "openai_compatible":
+            from llama_index.embeddings.openai import OpenAIEmbedding
+            base_url = config.base_url
+            if base_url and not base_url.endswith("/v1") and not base_url.endswith("/v1/"):
+                base_url = base_url.rstrip("/") + "/v1"
+                logger.info(f"Appended /v1 to embedding base_url: {base_url}")
 
-            elif config.embedding_provider == "openai_compatible":
-
-                from llama_index.embeddings.openai import OpenAIEmbedding
-
-                base_url = config.base_url
-
-                if base_url and not base_url.endswith("/v1") and not base_url.endswith("/v1/"):
-
-                    base_url = base_url.rstrip("/") + "/v1"
-
-                    logger.info(f"Appended /v1 to embedding base_url: {base_url}")
-
-                    
-
-                logger.info(f"Configuring OpenAI-compatible embeddings at {base_url}")
-
-                instances["embeddings"] = OpenAIEmbedding(
-
-                    model=config.embedding_model,
-
-                    api_key=config.api_key or "not-required",
-
-                    base_url=base_url
-
-                )
+            logger.info(f"Configuring OpenAI-compatible embeddings at {base_url}")
+            instances["embeddings"] = OpenAIEmbedding(
+                model=config.embedding_model,
+                api_key=config.api_key or "not-required",
+                base_url=base_url
+            )
 
         
 
