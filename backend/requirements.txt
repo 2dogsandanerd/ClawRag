@@ -29,6 +29,7 @@ llama-index==0.12.9
 llama-index-embeddings-ollama
 llama-index-vector-stores-chroma
 llama-index-llms-ollama
+llama-index-llms-openai-like
 
 # Retrieval enhancements
 rank_bm25

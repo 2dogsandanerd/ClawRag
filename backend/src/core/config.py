@@ -169,6 +169,7 @@ def _get_api_key(provider: str) -> Optional[str]:
     """Get API key for the specified provider from os.getenv()."""
     key_mapping = {
         "openai": "OPENAI_API_KEY",
+        "openai_compatible": "OPENAI_API_KEY",
         "gemini": "GOOGLE_API_KEY",
         "anthropic": "ANTHROPIC_API_KEY",
         "ollama": None  # Local, no API key needed
@@ -181,6 +182,7 @@ def _get_api_key_from_dict(provider: str, config_dict: Dict[str, Any]) -> Option
     """Get API key for the specified provider from config dictionary."""
     key_mapping = {
         "openai": "OPENAI_API_KEY",
+        "openai_compatible": "OPENAI_API_KEY",
         "gemini": "GOOGLE_API_KEY",
         "anthropic": "ANTHROPIC_API_KEY",
         "ollama": None  # Local, no API key needed
@@ -339,21 +341,23 @@ def create_llm_instances(config: LLMConfig, use_hot_reload: bool = True) -> Dict
             temperature=0.1  # Niedrige Temperatur für fokussierte Antworten
         )
     elif config.provider == "openai_compatible":
-        from llama_index.llms.openai import OpenAI
-        # Für OpenAI-kompatible Server wie LM Studio, Llama.cpp, etc.
+        from llama_index.llms.openai_like import OpenAILike
+        # OpenAILike skips model name validation (unlike OpenAI which rejects non-OpenAI model names)
+        # Works with OpenRouter, LM Studio, Llama.cpp, LocalAI, etc.
         base_url = config.base_url
         if base_url and not base_url.endswith("/v1") and not base_url.endswith("/v1/"):
             base_url = base_url.rstrip("/") + "/v1"
             logger.info(f"Appended /v1 to base_url: {base_url}")
 
         logger.info(f"Configuring OpenAI-compatible LLM at {base_url} (Model: {config.model})")
-        
+
         try:
-            instances["llm"] = OpenAI(
+            instances["llm"] = OpenAILike(
                 model=config.model,
-                api_key=config.api_key or "not-required",  # Manche OpenAI-kompatible Server benötigen keinen API-Schlüssel
-                base_url=base_url,  # Basis-URL des OpenAI-kompatiblen Servers
-                temperature=0.1
+                api_key=config.api_key or "not-required",
+                api_base=base_url,
+                temperature=0.1,
+                is_chat_model=True,
             )
             logger.success(f"✅ OpenAI-compatible LLM instance created successfully")
         except Exception as e:
