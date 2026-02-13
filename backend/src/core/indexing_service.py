@@ -16,9 +16,16 @@ from src.services.progress_service import progress_manager
 # LlamaIndex imports
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.core.ingestion import IngestionPipeline
-from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.node_parser import SentenceSplitter, SemanticSplitterNodeParser
 from llama_index.core.schema import TextNode, Document as LlamaDocument
 from llama_index.vector_stores.chroma import ChromaVectorStore
+from enum import Enum
+
+class SplitterType(str, Enum):
+    SENTENCE = "sentence"
+    SEMANTIC = "semantic"
+    CODE = "code"
+    ROW_BASED = "row_based"
 
 @dataclass
 class ChunkConfig:
@@ -26,6 +33,10 @@ class ChunkConfig:
     chunk_size: int = 1000
     chunk_overlap: int = 200
     separators: List[str] = None
+    splitter_type: SplitterType = SplitterType.SENTENCE
+    # Specific parameters for semantic splitter
+    semantic_buffer_size: int = 1024
+    semantic_similarity_threshold: float = 0.7
 
     def __post_init__(self):
         if self.separators is None:
@@ -94,6 +105,33 @@ class IndexingService:
             RAGResponse with indexing statistics
         """
         chunk_config = chunk_config or ChunkConfig()
+        
+        # If no chunk_config passed, try to load heuristics from ingest_config based on document type
+        # We need a representative document type. Assuming homogeneous batch or taking the first one.
+        if chunk_config == ChunkConfig() and documents:
+            # Try to infer type from metadata of first doc
+            first_doc = documents[0]
+            # Map mimetype or extension to config key
+            # This is a basic mapping, can be improved
+            source = first_doc.metadata.get("source", "").lower()
+            doc_type = "default"
+            if source.endswith(".pdf"): doc_type = "pdf"
+            elif source.endswith(".docx"): doc_type = "docx"
+            elif source.endswith(".html"): doc_type = "html"
+            elif source.endswith(".md"): doc_type = "markdown"
+            elif source.endswith(".csv"): doc_type = "csv"
+            elif source.endswith(".py") or source.endswith(".js"): doc_type = "code"
+            
+            from src.core.ingest_config import get_ingest_config
+            config = get_ingest_config()
+            heuristic = getattr(config.heuristics, doc_type, config.heuristics.default)
+            
+            try:
+                chunk_config.chunk_size = heuristic.chunk_size
+                chunk_config.chunk_overlap = heuristic.overlap
+                chunk_config.splitter_type = SplitterType(heuristic.splitter_type)
+            except Exception as e:
+                logger.warning(f"Failed to apply heuristic for {doc_type}: {e}")
 
         try:
             # Get the chroma client through the chroma_manager (async)
@@ -227,24 +265,68 @@ class IndexingService:
         # Create LlamaIndex ChromaVectorStore
         vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
 
-        # Create and run IngestionPipeline
-        # The pipeline will automatically store in vector_store when configured
-        pipeline = IngestionPipeline(
-            transformations=[
-                SentenceSplitter(
-                    chunk_size=chunk_config.chunk_size,
-                    chunk_overlap=chunk_config.chunk_overlap
-                ),
-                embeddings  # Add embeddings as a transformation
-            ],
-            vector_store=vector_store
-        )
-
-        # Run the pipeline - this will chunk, embed, AND store automatically
-        progress_manager.set_status(f"Processing {len(llama_docs)} documents (chunking + embedding + storing)...")
-        nodes = await pipeline.arun(documents=llama_docs, show_progress=True)
+        # Select splitter based on config
+        transformations = []
         
-        logger.info(f"Successfully indexed {len(nodes)} chunks to ChromaDB")
+        # We will construct the pipeline dynamically
+        
+        # Create Vector Store
+        vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+        
+        nodes_to_process = []
+        
+        if chunk_config.splitter_type == SplitterType.SEMANTIC:
+             try:
+                from src.core.resource_manager import BatchSemanticSplitter
+                logger.info("Using Semantic Splitting...")
+                splitter = BatchSemanticSplitter(
+                    embed_model=embeddings,
+                    buffer_size=chunk_config.semantic_buffer_size,
+                    similarity_threshold=chunk_config.semantic_similarity_threshold
+                )
+                # Split manually first
+                # We need to run this async
+                nodes_to_process = await splitter.split_nodes(llama_docs)
+                
+                # Pipeline now only needs Embeddings + Storage
+                pipeline = IngestionPipeline(
+                    transformations=[embeddings],
+                    vector_store=vector_store
+                )
+                
+                progress_manager.set_status(f"Processing {len(nodes_to_process)} semantic chunks...")
+                nodes = await pipeline.arun(nodes=nodes_to_process, show_progress=True)
+                
+             except Exception as e:
+                logger.error(f"Semantic splitting failed: {e}. Falling back to SentenceSplitter.")
+                # Fallback
+                pipeline = IngestionPipeline(
+                    transformations=[
+                        SentenceSplitter(
+                            chunk_size=chunk_config.chunk_size,
+                            chunk_overlap=chunk_config.chunk_overlap
+                        ),
+                        embeddings
+                    ],
+                    vector_store=vector_store
+                )
+                nodes = await pipeline.arun(documents=llama_docs, show_progress=True)
+
+        else:
+            # Standard Sentence Splitter
+            pipeline = IngestionPipeline(
+                transformations=[
+                    SentenceSplitter(
+                        chunk_size=chunk_config.chunk_size,
+                        chunk_overlap=chunk_config.chunk_overlap
+                    ),
+                    embeddings
+                ],
+                vector_store=vector_store
+            )
+            nodes = await pipeline.arun(documents=llama_docs, show_progress=True)
+        
+        logger.info(f"Successfully indexed {len(nodes)} chunks to ChromaDB using {chunk_config.splitter_type.value} strategy")
 
         # Update BM25 Index (Phase H.1.1)
         progress_manager.set_status(f"Generating BM25 Hybrid Search index for {len(nodes)} chunks...")
@@ -281,6 +363,7 @@ class IndexingService:
             metadata={
                 "chunk_size": chunk_config.chunk_size,
                 "chunk_overlap": chunk_config.chunk_overlap,
+                "chunking_strategy": chunk_config.splitter_type.value,
                 "indexing_type": "simple_chunking",
                 "bm25_status": "failed" if bm25_failed else "success"
             },

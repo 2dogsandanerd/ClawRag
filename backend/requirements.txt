@@ -42,6 +42,8 @@ textstat
 
 # Caching / performance
 numpy
+gputil
+psutil
 
 # Evaluation
 ragas
