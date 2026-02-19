@@ -51,3 +51,6 @@ clawbot_*.txt
 clawbot_*.json
 clawbot_*.yaml
 clawbot_*.yml
+
+# AI Agent files (generated)
+AGENTS.md

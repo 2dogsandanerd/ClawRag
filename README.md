@@ -1,127 +1,229 @@
-# ClawRAG - The Brain for OpenClaw
+# ClawRAG
 
 [![Version](https://img.shields.io/badge/version-1.2.0-blue)](https://github.com/2dogsandanerd/ClawRag/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/)
+[![Enterprise](https://img.shields.io/badge/Enterprise-Available-success)](https://github.com/2dogsandanerd/RAG_enterprise_core)
 
-**The Cognitive Core for Autonomous Agents.**
+**Production-Ready RAG Engine. Self-Hosted. Data Sovereign. Enterprise-Grade.**
 
-ClawRAG is a production-ready, self-hosted RAG engine designed to serve as the long-term memory ("The Brain") for agents like **OpenClaw**. It decouples intelligence from action, providing a robust API for document ingestion and retrieval.
+ClawRAG is a powerful, self-hosted Retrieval-Augmented Generation (RAG) system that gives you complete control over your AI document processing. Process documents locally with local LLMs or connect to cloud APIs—your data never leaves your infrastructure unless you want it to.
+
+[🚀 Quick Start](#quick-start) • [📊 Editions](#editions) • [🏢 Enterprise](#enterprise-features) • [📖 Documentation](docs/)
+
+---
+
+## 🎯 Why ClawRAG?
+
+### The Problem
+Enterprise document processing forces you to choose:
+- ❌ **Cloud solutions**: Send sensitive data to third parties
+- ❌ **Simple tools**: Fail on complex PDFs, tables, mixed content
+- ❌ **DIY approaches**: Months of integration, no production readiness
+
+### Our Solution
+ClawRAG provides **production-grade document intelligence** that runs entirely on your infrastructure:
+
+✅ **Self-Hosted**: Complete data sovereignty  
+✅ **Intelligent Processing**: Handles complex PDFs, tables, scanned documents  
+✅ **Hybrid Search**: Combines semantic + keyword search for accuracy  
+✅ **Production-Ready**: Docker-first, scalable, monitored  
+✅ **Enterprise Path**: Seamless upgrade to advanced features  
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+- Docker & Docker Compose installed
+- 8GB+ RAM (16GB recommended)
 
-1. **Docker & Docker Compose** installed
-2. No additional setup required - everything runs in containers!
-
-### Setup
+### One-Command Setup
 
 ```bash
-# 1. Clone the repository
+# 1. Clone and enter
 git clone https://github.com/2dogsandanerd/ClawRag.git
 cd ClawRag
 
-# 2. Copy the example environment file
+# 2. Configure
 cp .env.example .env
 
-# 3. Start the services
+# 3. Start everything
 docker compose up -d
 
-# 4. Check health
+# 4. Verify
 curl http://localhost:8080/health
-
-# 5. Open the application
-open http://localhost:8080
 ```
 
-### Services (all through single nginx gateway):
-- Frontend UI: http://localhost:8080/
-- API Docs: http://localhost:8080/docs
-- Health Check: http://localhost:8080/health
-- API Endpoints: http://localhost:8080/api/v1/rag/*
+**Access your instance:**
+- 🌐 **Web UI**: http://localhost:8080
+- 📚 **API Docs**: http://localhost:8080/docs
+- 🔍 **Health Check**: http://localhost:8080/health
+
+---
+
+## 📊 Editions
+
+Choose the edition that fits your needs:
+
+| Feature | Community Edition | Enterprise Edition |
+|---------|------------------|-------------------|
+| **Document Processing** | Single-engine (Docling) | Multi-engine consensus |
+| **Supported Formats** | PDF, DOCX, MD, TXT, CSV | + Images, Email, Code, PPT, XLS |
+| **Search** | Vector + BM25 Hybrid | + Graph RAG, Semantic Routing |
+| **Data Validation** | Basic quality scoring | Consensus validation, 100% accuracy |
+| **Human Verification** | Manual review | Surgical precision (only conflicts) |
+| **Multi-Tenancy** | Single user | Mission-based isolation |
+| **Quality Assurance** | Basic logging | Real-time dashboards, automated testing |
+| **Support** | Community | SLA-backed, dedicated support |
+| **Pricing** | Free (MIT License) | Custom enterprise licensing |
+
+**[→ Compare full feature matrix](docs/editions.md)**
+
+---
+
+## 🏢 Enterprise Features
+
+Need more? [ClawRAG Enterprise Core](https://github.com/2dogsandanerd/RAG_enterprise_core) provides advanced capabilities:
+
+### 🧠 Adaptive Intelligence
+- **Multi-Engine Processing**: 3+ specialized extractors work in parallel
+- **Consensus Validation**: Automated comparison ensures 100% data integrity
+- **Intelligent Routing**: Analyzes document type and selects optimal strategy
+
+### 🔒 Zero Data Loss Architecture
+- **Parallel Processing**: Multiple engines analyze each document independently
+- **Conflict Detection**: Flags discrepancies for targeted human review
+- **Visual Verification**: See exactly where conflicts occur on source documents
+
+### 🌐 Advanced Knowledge Retrieval
+- **Graph RAG**: Neo4j-powered relationship traversal between documents
+- **Semantic + Graph Hybrid**: Combines concept search with factual relationships
+- **Query Decomposition**: Complex queries automatically split into sub-tasks
+
+### 📊 Mission-Based Multi-Tenancy
+- **Customer Isolation**: Complete data separation per mission
+- **Hot Configuration**: Update rules without system restart
+- **Quality Gates**: Per-mission thresholds and processing rules
+
+### 📈 Continuous Quality Assurance
+- **Real-Time Observability**: Grafana dashboards for all processing stages
+- **Automated Testing**: Continuous validation against reference datasets
+- **Performance Monitoring**: Track accuracy, speed, and system health
+
+**[→ View Enterprise Manifest](https://github.com/2dogsandanerd/RAG_enterprise_core/blob/main/manifest_v4.0.md)**
+
+---
+
+## 💼 Use Cases
+
+### 📄 Legal & Compliance
+Process contracts, court filings, and regulatory documents with:
+- Citation extraction and validation
+- Clause detection and comparison
+- Audit-compliant processing trails
+- PII detection and redaction
+
+### 🏥 Healthcare & Research
+Analyze medical literature and patient records:
+- Medical entity extraction
+- Cross-document concept linking
+- Citation graph analysis
+- HIPAA-compliant processing
+
+### 💰 Financial Services
+Process invoices, reports, and due diligence documents:
+- Entity mapping and verification
+- Anomaly detection in financial data
+- Structured data extraction from tables
+- Multi-document reconciliation
+
+### 🔬 Technical Documentation
+Ingest API docs, manuals, and technical specifications:
+- Code block preservation
+- Structured content extraction
+- Semantic chunking for technical terms
+- Cross-reference resolution
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Nginx Gateway (8080)                 │
+│  ┌──────────────┐  ┌──────────────────────────────┐    │
+│  │  Frontend UI │  │  FastAPI Backend (8081)      │    │
+│  │  (Vue.js)    │  │  - RAG API                   │    │
+│  └──────────────┘  │  - Document Processing       │    │
+│                    │  - Hybrid Search             │    │
+│                    └──────────────┬───────────────┘    │
+└───────────────────────────────────┼─────────────────────┘
+                                    │
+         ┌──────────────────────────┼──────────────────┐
+         │                          │                  │
+         ▼                          ▼                  ▼
+┌─────────────────┐  ┌──────────────────────┐  ┌──────────────┐
+│  ChromaDB       │  │  Ollama / LLM        │  │  (Optional)  │
+│  Vector Store   │  │  Embeddings & Chat   │  │  Enterprise  │
+│  (Port 8001)    │  │  (Port 11434)        │  │  Extensions  │
+└─────────────────┘  └──────────────────────┘  └──────────────┘
+```
+
+### Key Components
+
+**Backend (`backend/src/`):**
+- `api/v1/rag/` - REST API endpoints (ingestion, query, collections)
+- `core/` - ChromaDB manager, document loaders, retrievers
+- `services/` - Document processing, deduplication, task management
+
+**Processing Pipeline:**
+1. **Ingestion**: Multi-format support with intelligent parsing
+2. **Chunking**: Configurable semantic and sentence-based strategies
+3. **Embedding**: Multi-provider support (Ollama, OpenAI, Anthropic)
+4. **Storage**: ChromaDB with metadata and hybrid search
+5. **Retrieval**: Vector + BM25 with Reciprocal Rank Fusion
 
 ---
 
 ## ⚙️ Configuration
 
-All configuration is done through the `.env` file:
+### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `8080` | External port for nginx gateway |
-| `DOCS_DIR` | `./data/docs` | Host directory to mount as `/host_root` for folder ingestion |
-| `LLM_PROVIDER` | `ollama` | LLM provider (ollama, openai, anthropic, gemini, openai_compatible) |
+| `DOCS_DIR` | `./data/docs` | Host directory for folder ingestion |
+| `LLM_PROVIDER` | `ollama` | LLM provider (ollama, openai, anthropic, gemini) |
 | `LLM_MODEL` | `llama3:latest` | Model name for selected provider |
-| `EMBEDDING_PROVIDER` | `ollama` | Embedding provider (usually matches LLM) |
 | `EMBEDDING_MODEL` | `nomic-embed-text` | Embedding model name |
-| `CHUNK_SIZE` | `512` | Size of text chunks for ingestion |
+| `CHUNK_SIZE` | `512` | Size of text chunks |
 | `CHUNK_OVERLAP` | `128` | Overlap between chunks |
 | `DEBUG` | `false` | Enable debug logging |
-| `LOG_LEVEL` | `INFO` | Logging level |
 
-### LLM Provider Configuration
+### LLM Configuration Examples
 
-#### 1. Ollama (Default) - Container
-Perfect for privacy and offline usage. Everything runs in containers.
-
-**Configuration in `.env`:**
+**Local (Ollama) - Privacy First:**
 ```bash
 LLM_PROVIDER=ollama
-LLM_MODEL=llama3:latest  # or any model you want to use
+LLM_MODEL=llama3:latest
 EMBEDDING_MODEL=nomic-embed-text
 ```
 
-The system includes an Ollama container that shares models with the host if available.
-
-#### 2. Cloud Models (OpenAI, Anthropic, Gemini)
-For maximum reasoning power.
-
-**Configuration in `.env`:**
+**Cloud (OpenAI) - Maximum Performance:**
 ```bash
-# Example for OpenAI
 LLM_PROVIDER=openai
 LLM_MODEL=gpt-4o
 OPENAI_API_KEY=sk-proj-...
 ```
 
-#### 3. Local AI Servers (LM Studio, Llama.cpp, Koboldcpp, etc.)
-For users who prefer local AI servers that offer an OpenAI-compatible API.
-
-**Configuration in `.env`:**
+**Local Server (LM Studio, etc.):**
 ```bash
-# Example for LM Studio or similar OpenAI-compatible server
 LLM_PROVIDER=openai_compatible
-LLM_MODEL=your-local-model-name
-OPENAI_BASE_URL=http://host.docker.internal:1234/v1  # Adjust to your server's address
+LLM_MODEL=local-model
+OPENAI_BASE_URL=http://host.docker.internal:1234/v1
 ```
-
----
-
-## 📁 Document Ingestion
-
-### Single File Upload
-Upload documents directly through the web UI or API.
-
-### Folder Ingestion
-Bulk document processing with real-time progress tracking.
-
-**Configuration:**
-1. Set `DOCS_DIR=/path/to/your/documents` in `.env`
-2. Restart: `docker compose restart backend`
-3. Use `/host_root` in the UI (your DOCS_DIR is mounted here)
-
----
-
-## 🔍 Search Capabilities
-
-The system provides hybrid search combining:
-- **Vector Search**: Semantic similarity using embeddings
-- **BM25 Search**: Keyword-based search for exact term matching
-- **Results are combined using Reciprocal Rank Fusion (RRF)**
 
 ---
 
@@ -135,41 +237,29 @@ import requests
 BASE_URL = "http://localhost:8080/api/v1/rag"
 
 # 1. Create a collection
-response = requests.post(
-    f"{BASE_URL}/collections",
-    files={
-        "collection_name": (None, "my_knowledge"),
-        "embedding_provider": (None, "ollama"),
-        "embedding_model": (None, "nomic-embed-text")
-    }
-)
-print(f"Collection created: {response.json()}")
+requests.post(f"{BASE_URL}/collections", files={
+    "collection_name": (None, "legal_docs"),
+    "embedding_model": (None, "nomic-embed-text")
+})
 
 # 2. Upload documents
-with open("document.pdf", "rb") as f:
-    response = requests.post(
-    f"{BASE_URL}/documents/upload",
-    files={"files": f},
-    data={
-        "collection_name": "my_knowledge",
-        "chunk_size": 512,
-        "chunk_overlap": 128
-    }
-)
-print(f"Upload status: {response.json()}")
+with open("contract.pdf", "rb") as f:
+    requests.post(
+        f"{BASE_URL}/documents/upload",
+        files={"files": f},
+        data={"collection_name": "legal_docs"}
+    )
 
-# 3. Query the knowledge base
+# 3. Query knowledge base
 response = requests.post(
     f"{BASE_URL}/query",
     json={
-        "query": "What are the main topics?",
-        "collection": "my_knowledge",
+        "query": "What are the termination clauses?",
+        "collection": "legal_docs",
         "k": 5
     }
 )
-result = response.json()
-print(f"Answer: {result.get('answer')}")
-print(f"Sources: {len(result.get('sources', []))}")
+print(response.json()["answer"])
 ```
 
 ### cURL Examples
@@ -181,10 +271,7 @@ curl http://localhost:8080/health
 # List collections
 curl http://localhost:8080/api/v1/rag/collections
 
-# Get collection stats
-curl http://localhost:8080/api/v1/rag/collections/my_docs/stats
-
-# Query with specific parameters
+# Query with filters
 curl -X POST http://localhost:8080/api/v1/rag/query \
   -H "Content-Type: application/json" \
   -d '{
@@ -193,165 +280,119 @@ curl -X POST http://localhost:8080/api/v1/rag/query \
     "k": 10,
     "similarity_threshold": 0.5
   }'
-
-# Delete a collection
-curl -X DELETE http://localhost:8080/api/v1/rag/collections/my_docs
 ```
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────┐
-│             FastAPI Backend (Port 8081)         │
-│  ┌──────────────┐  ┌─────────────────────────┐ │
-│  │ RAG API      │  │ Lifespan Management     │ │
-│  │ - Query      │  │ - ChromaDB Connection   │ │
-│  │ - Upload     │  │ - Singleton Patterns    │ │
-│  └──────┬───────┘  └────────────┬────────────┘ │
-└─────────┼──────────────────────┼───────────────┘
-          │                      │
-          ↓                      ↓
-┌─────────────────┐    ┌──────────────────────┐
-│  ChromaDB       │    │  Ollama / LLM        │
-│  Vector Storage │    │  Embeddings & Chat   │
-│  (Port 8001)    │    │  (Port 11434)        │
-└─────────────────┘    └──────────────────────┘
-```
-
-### Key Components
-
-**Backend (`backend/src/`):**
-- `api/v1/rag/` - API endpoints (ingestion, query, collections, documents)
-- `core/` - ChromaDB manager, Docling loader, retrievers, query engine
-- `services/` - Document processing, classification, generators
-
-**Core Patterns:**
-- **Singleton**: ChromaManager for single connection instance
-- **Resilience**: Circuit breaker + retry logic for ChromaDB
-- **Lifespan**: Proper FastAPI startup/shutdown for clean connections
-- **Docker-first**: Everything runs in containers for easy deployment
 
 ---
 
 ## 📦 What's Included
 
-Everything runs in Docker containers:
-- **Backend**: FastAPI application
-- **ChromaDB**: Vector database
-- **Ollama**: LLM and embedding service
-- **Nginx**: Reverse proxy gateway
+### Community Edition
+- ✅ FastAPI backend with comprehensive API
+- ✅ Web UI for document management and querying
+- ✅ ChromaDB vector database
+- ✅ Ollama LLM/embedding service
+- ✅ Nginx reverse proxy
+- ✅ Multi-provider LLM support
+- ✅ Hybrid search (vector + BM25)
+- ✅ Document chunking strategies
+- ✅ Folder batch ingestion
+
+### Optional Enterprise Extensions
+- 🔧 Multi-engine consensus processing
+- 🔧 Graph database (Neo4j) integration
+- 🔧 Real-time monitoring dashboards
+- 🔧 Advanced quality assurance pipeline
+- 🔧 Mission-based multi-tenancy
+- 🔧 PII detection and compliance tools
 
 ---
 
 ## 🚨 Troubleshooting
 
-### LLM Connection issues
+### Common Issues
 
-If you use an `openai_compatible` provider (LM Studio, LocalAI, etc.) and can't connect:
-
-1. **Check Base URL**: Ensure your `OPENAI_BASE_URL` is correct. The system automatically appends `/v1` if missing.
-2. **Onboarding Wizard**: Run the **System Check** in the UI. it provides detailed error messages for connection failures.
-3. **Backend Logs**: Check initialization logs for specific URL and model info:
-   ```bash
-   docker compose logs -f backend | grep "LLM"
-   ```
-4. **Network**: If running LM Studio on the host and ClawRAG in Docker, use `http://host.docker.internal:1234/v1` instead of `localhost`.
-
-### App won't start
-
+**LLM Connection Problems:**
 ```bash
-# Check all services
-docker compose ps
+# Check LLM initialization
+docker compose logs backend | grep "LLM"
 
-# View backend logs
-docker compose logs backend
-
-# Check ChromaDB connection
-docker compose logs chromadb
+# For local servers, verify network
+docker exec clawrag-backend curl http://host.docker.internal:11434
 ```
 
-### Folder Ingestion finds no files
-
+**Folder Ingestion Not Working:**
 ```bash
-# 1. Check your DOCS_DIR setting in .env
+# Verify DOCS_DIR is set correctly
 cat .env | grep DOCS_DIR
 
-# 2. Verify the directory exists and has files
-ls -la /path/to/your/docs
-
-# 3. Check what's mounted inside container
+# Check mount inside container
 docker exec clawrag-backend ls -la /host_root/
-
-# 4. If /host_root is empty, DOCS_DIR is wrong or not mounted
-# Fix: Update .env DOCS_DIR=/path/to/your/docs
-# Then: docker compose restart backend
 ```
 
-### Folder Ingestion path errors in UI
+**Performance Issues:**
+```bash
+# Check resource usage
+docker stats
 
-The UI folder path input must start with `/host_root`. This is automatically pre-filled.
+# Review logs for bottlenecks
+docker compose logs -f backend
+```
 
-- ✅ Correct: `/host_root` or `/host_root/subfolder`
-- ❌ Wrong: `/home/user/Documents` (this won't work - use DOCS_DIR in .env instead)
-
-## ⚙️ Customization Options
-
-### Model Configuration
-- Change `LLM_MODEL` in `.env` to use different models
-- Adjust `EMBEDDING_MODEL` for different embedding quality/speed trade-offs
-- For 8GB VRAM systems, use smaller models like `llama3.2:3b`
-
-### Ingestion Settings
-- Modify `CHUNK_SIZE` and `CHUNK_OVERLAP` in `.env` for different chunking strategies
-- Adjust `INGEST_BATCH_SIZE` for faster or more memory-efficient ingestion
-
-### Performance Tuning
-- Set `DEBUG=false` in production for better performance
-- Adjust `LOG_LEVEL` to reduce logging overhead in production
-
-For more detailed customization options, see the [configuration guide](docs/configuration.md) and [customization guide](docs/customization.md).
+**[→ Full troubleshooting guide](docs/troubleshooting.md)**
 
 ---
 
-## 📚 API Endpoints
+## 🤝 Community & Support
 
-Full API documentation available at http://localhost:8080/docs
+### Community Edition
+- 🐛 [GitHub Issues](https://github.com/2dogsandanerd/ClawRag/issues) - Bug reports
+- 💡 [Discussions](https://github.com/2dogsandanerd/ClawRag/discussions) - Feature requests
+- 📖 [Documentation](docs/) - Setup and configuration
+- 📝 [Contributing Guide](CONTRIBUTING.md) - How to contribute
 
-**Collections:**
-- `POST /api/v1/rag/collections` - Create collection
-- `GET /api/v1/rag/collections` - List collections
-- `DELETE /api/v1/rag/collections/{name}` - Delete collection
+### Enterprise Support
+- 🎫 SLA-backed support with response time guarantees
+- 📞 Direct engineering contact
+- 🚀 Priority feature development
+- 🏢 Custom integration assistance
 
-**Documents:**
-- `POST /api/v1/rag/documents/upload` - Upload documents
-- `GET /api/v1/rag/documents` - List documents
-- `DELETE /api/v1/rag/documents/{id}` - Delete document
-
-**Query:**
-- `POST /api/v1/rag/query` - Query knowledge base
-
-**Ingestion:**
-- `POST /api/v1/rag/ingestion/scan-folder` - Scan folder for documents
-- `POST /api/v1/rag/ingestion/ingest-batch` - Batch ingestion
-- `POST /api/v1/rag/ingestion/ingest-folder` - Ingest folder synchronously
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! This is the Community Edition - we encourage:
-
-- 🐛 Bug reports and fixes
-- 📝 Documentation improvements
-- 💡 Feature suggestions
-- ⚡ Performance optimizations
+**[→ Contact for Enterprise](mailto:2dogsandanerd@gmail.com)**
 
 ---
 
 ## 📄 License
 
-MIT License - Free use in commercial and open-source projects.
+**Community Edition**: MIT License - Free for commercial and personal use.
 
-Copyright (c) 2025 2dogsandanerd (ClawRAG Community Edition)
+**Enterprise Edition**: Proprietary license with custom terms. Contact for details.
+
+Copyright (c) 2025 2dogsandanerd
+
+---
+
+## 🎯 Roadmap
+
+### Version 1.3 (Next)
+- [ ] Multi-collection search
+- [ ] Enhanced UI with query history
+- [ ] Additional document format support
+
+### Version 2.0 (Planned)
+- [ ] Conversational memory
+- [ ] Advanced analytics dashboard
+- [ ] Plugin system for custom processors
+
+### Enterprise Roadmap
+- [ ] Kubernetes deployment
+- [ ] Advanced graph reasoning
+- [ ] Multi-modal search (text + images)
+- [ ] ISO 27001 certification
+
+---
+
+<p align="center">
+  <strong>Built with ❤️ for developers who value data sovereignty</strong><br>
+  <a href="https://github.com/2dogsandanerd/ClawRag">GitHub</a> •
+  <a href="https://github.com/2dogsandanerd/RAG_enterprise_core">Enterprise</a> •
+  <a href="docs/">Documentation</a>
+</p>
