@@ -12,8 +12,10 @@ def _tokenize_text(text: str) -> List[str]:
     """Simple tokenizer for BM25."""
     return text.lower().split()
 
+import os
+
 # Assuming this is the same directory used during ingestion
-BM25_INDEX_DIR = Path("/app/data/bm25_indices")
+BM25_INDEX_DIR = Path(os.getenv("BM25_INDEX_DIR", "data/bm25_indices"))
 
 class BM25Retriever(BaseRetriever):
     """BM25 Retriever."""

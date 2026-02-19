@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0
+rootdir: /mnt/dev/eingang/ClawRAG/online/ClawRag-main
+plugins: anyio-4.12.1, langsmith-0.7.1, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 3 items
+
+backend/tests/api/test_chunking_api.py ...                               [100%]
+
+=============================== warnings summary ===============================
+venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249
+  /mnt/dev/eingang/ClawRAG/online/ClawRag-main/venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'validate_default' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'validate_default' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+    warnings.warn(
+
+backend/src/database/models.py:26
+  /mnt/dev/eingang/ClawRAG/online/ClawRag-main/backend/src/database/models.py:26: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/tests/api/test_chunking_api.py::test_ingestion_processor_options_extraction
+  /mnt/dev/eingang/ClawRAG/online/ClawRag-main/backend/src/models/extraction_result.py:5: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ExtractionResult(BaseModel):
+
+backend/tests/api/test_chunking_api.py::test_ingestion_processor_options_extraction
+  /mnt/dev/eingang/ClawRAG/online/ClawRag-main/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:383: UserWarning: Valid config keys have changed in V2:
+  * 'schema_extra' has been renamed to 'json_schema_extra'
+    warnings.warn(message, UserWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 3 passed, 4 warnings in 3.95s =========================

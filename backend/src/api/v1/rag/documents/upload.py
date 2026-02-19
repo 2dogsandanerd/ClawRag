@@ -198,16 +198,22 @@ async def validate_upload(
         raise ServiceUnavailableError("validation", str(e))
 
 
+from src.api.v1.rag.models.ingestion import ProcessOptions, ChunkingStrategy
+from src.core.indexing_service import ChunkConfig, SplitterType
+
 @router.post("/documents/upload")
 async def upload_documents(
     files: List[UploadFile] = File(...),
     collection_name: str = Form("default"),
     chunk_size: int = Form(500),
     chunk_overlap: int = Form(50),
+    chunking_strategy: ChunkingStrategy = Form(ChunkingStrategy.SENTENCE),
+    semantic_buffer_size: Optional[int] = Form(1024),
+    semantic_similarity_threshold: Optional[float] = Form(0.7),
     rag_client=Depends(get_rag_client),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload and index documents to ChromaDB with embedding validation."""
+    """Upload and index documents to ChromaDB with configurable chunking."""
     # FIX ISSUE #1: Limit concurrent uploads to prevent resource exhaustion
     # The semaphore protects the ENTIRE upload process, not just logging
     async with UPLOAD_SEMAPHORE:
@@ -316,7 +322,10 @@ async def upload_documents(
                         # Create ChunkConfig
                         chunk_config = ChunkConfig(
                             chunk_size=chunk_size,
-                            chunk_overlap=chunk_overlap
+                            chunk_overlap=chunk_overlap,
+                            splitter_type=SplitterType(chunking_strategy.value),
+                            semantic_buffer_size=semantic_buffer_size,
+                            semantic_similarity_threshold=semantic_similarity_threshold
                         )
 
                         # Index using RAGClient (which uses IndexingService)

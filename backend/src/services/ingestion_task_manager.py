@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 from loguru import logger
 from pathlib import Path
 
-BM25_INDEX_DIR = Path("/app/data/bm25_indices")
+import os
+BM25_INDEX_DIR = Path(os.getenv("BM25_INDEX_DIR", "data/bm25_indices"))
 
 
 class TaskStatus(str, Enum):

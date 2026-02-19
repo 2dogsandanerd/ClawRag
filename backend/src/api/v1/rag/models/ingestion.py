@@ -1,9 +1,9 @@
 """Ingestion and upload models."""
 
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import List, Optional, Dict, Any, Union
 from pathlib import Path
-
+from enum import Enum
 
 class FilePreview(BaseModel):
     """Preview info for uploaded file before ingestion."""
@@ -27,6 +27,33 @@ class AnalyzeFilesResponse(BaseModel):
     estimated_chunks: int
 
 
+class ChunkingStrategy(str, Enum):
+    SENTENCE = "sentence"
+    SEMANTIC = "semantic"
+    CODE = "code"
+    ROW_BASED = "row_based"
+
+class ProcessOptions(BaseModel):
+    """Options for document processing and chunking."""
+    chunk_size: int = Field(default=1000, ge=100, le=5000, description="Size of text chunks in characters")
+    chunk_overlap: int = Field(default=200, ge=0, description="Overlap between chunks in characters")
+    chunking_strategy: ChunkingStrategy = Field(default=ChunkingStrategy.SENTENCE, description="Strategy for document chunking")
+    # Specific parameters for semantic chunking
+    semantic_buffer_size: Optional[int] = Field(default=1024, ge=100, le=2048, description="Minimum buffer size for semantic splitting")
+    semantic_similarity_threshold: Optional[float] = Field(default=0.7, ge=0.0, le=1.0, description="Similarity threshold for semantic splitting")
+    
+    @field_validator("chunk_overlap")
+    @classmethod
+    def validate_chunk_overlap(cls, v: int, values) -> int:
+        """Validate that chunk_overlap is less than chunk_size."""
+        # Pydantic v2: values is a ValidationInfo object or dict depending on mode
+        # In field_validator, we can use the 'values' dict if it's available
+        if hasattr(values, 'data') and "chunk_size" in values.data:
+            chunk_size = values.data["chunk_size"]
+            if v >= chunk_size:
+                raise ValueError("chunk_overlap must be less than chunk_size")
+        return v
+
 class FileAssignment(BaseModel):
     """Assignment of a file to a collection."""
 
@@ -38,8 +65,9 @@ class FileAssignment(BaseModel):
         ...,
         description="Target ChromaDB collection name"
     )
-    process_options: Optional[Dict[str, Any]] = Field(
-        default_factory=lambda: {"chunk_size": 1000, "chunk_overlap": 200}
+    process_options: Optional[ProcessOptions] = Field(
+        default_factory=ProcessOptions,
+        description="Options for document processing and chunking"
     )
 
     @field_validator("file")
@@ -58,7 +86,7 @@ class FileAssignment(BaseModel):
         allowed_extensions = {
             '.pdf', '.docx', '.pptx', '.xlsx',
             '.html', '.md', '.csv', '.txt',
-            '.eml', '.mbox', '.py', '.js', '.java'
+            '.eml', '.mbox', '.py', '.js', '.java', '.cs', '.cpp', '.h', '.hpp'
         }
 
         if path.suffix.lower() not in allowed_extensions:
@@ -68,26 +96,6 @@ class FileAssignment(BaseModel):
             )
 
         return v
-
-    @field_validator("process_options")
-    @classmethod
-    def validate_process_options(cls, v: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate chunking parameters."""
-        chunk_size = v.get("chunk_size", 1000)
-        chunk_overlap = v.get("chunk_overlap", 200)
-
-        if chunk_size < 100:
-            raise ValueError("chunk_size must be at least 100")
-        if chunk_size > 5000:
-            raise ValueError("chunk_size must not exceed 5000")
-
-        if chunk_overlap < 0:
-            raise ValueError("chunk_overlap must be non-negative")
-        if chunk_overlap >= chunk_size:
-            raise ValueError("chunk_overlap must be less than chunk_size")
-
-        return v
-
 
 class ScanFolderRequest(BaseModel):
     """Request to scan a folder for Docling-compatible files."""
@@ -111,23 +119,43 @@ class IngestBatchRequest(BaseModel):
         ...,
         min_length=1,
         max_length=100,
-        description="File-to-collection assignments (max 100 files per batch)"
+        description="File-to-collection assignments with individual processing options"
     )
     async_mode: bool = Field(
         default=True,
         description="Process asynchronously in background"
     )
+    # New option: global chunking strategy for all files in batch
+    default_chunking_strategy: Optional[ChunkingStrategy] = Field(
+        default=None,
+        description="Default chunking strategy for all assignments (can be overridden per file)"
+    )
+    # Option for batch-optimized processing
+    optimize_for_quality: bool = Field(
+        default=False,
+        description="Optimize processing for quality (may be slower) - enables semantic chunking by default"
+    )
 
-    @field_validator("assignments")
-    @classmethod
-    def validate_batch_size(cls, v: List[FileAssignment]) -> List[FileAssignment]:
-        """Ensure batch is not empty and not too large."""
-        if len(v) == 0:
-            raise ValueError("At least one file assignment is required")
-        if len(v) > 100:
-            raise ValueError("Maximum 100 files per batch allowed")
-        return v
-
+    @model_validator(mode='after')
+    def apply_batch_options(self) -> 'IngestBatchRequest':
+        """Apply global options to all assignments if they use default strategy."""
+        
+        target_strategy = self.default_chunking_strategy
+        
+        # Quality optimization overrides default strategy to semantic
+        if self.optimize_for_quality:
+            target_strategy = ChunkingStrategy.SEMANTIC
+            
+        if target_strategy:
+            for assignment in self.assignments:
+                # Only override if assignment is using default strategy (SENTENCE)
+                # or if options were not explicitly provided
+                if not assignment.process_options:
+                    assignment.process_options = ProcessOptions(chunking_strategy=target_strategy)
+                elif assignment.process_options.chunking_strategy == ChunkingStrategy.SENTENCE:
+                    assignment.process_options.chunking_strategy = target_strategy
+                    
+        return self
 
 class IngestionResponse(BaseModel):
     """Response for batch ingestion."""

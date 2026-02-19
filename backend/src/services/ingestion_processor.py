@@ -141,15 +141,41 @@ class IngestionProcessor:
         """
         from src.database.database import AsyncSessionLocal
         from src.services.extraction_service import ExtractionService
-        from src.core.indexing_service import Document as IndexingDocument
+        from src.core.indexing_service import Document as IndexingDocument, ChunkConfig, SplitterType
         from src.core.exceptions import ExtractionError
+        from src.api.v1.rag.models.ingestion import ProcessOptions, ChunkingStrategy
 
         async with semaphore:
             start_time = time.time()
-            file_path = assignment['file_path']
-            filename = assignment['filename']
+            file_path = assignment.get('file_path') or assignment.get('file') # Handle both keys (internal vs user input)
+            filename = assignment.get('filename') or Path(file_path).name
             # collection_name passed as arg, but assignment might override (legacy support)
             target_collection = assignment.get('collection', collection_name)
+            
+            # Extract process options
+            process_options_data = assignment.get('process_options')
+            chunk_config = None
+            
+            # Handle both object (Pydantic) and dict (from JSON)
+            if process_options_data:
+                if isinstance(process_options_data, dict):
+                    # Manual conversion if dict
+                    chunk_config = ChunkConfig(
+                        chunk_size=process_options_data.get('chunk_size', 1000),
+                        chunk_overlap=process_options_data.get('chunk_overlap', 200),
+                        splitter_type=SplitterType(process_options_data.get('chunking_strategy', 'sentence')),
+                        semantic_buffer_size=process_options_data.get('semantic_buffer_size', 1024),
+                        semantic_similarity_threshold=process_options_data.get('semantic_similarity_threshold', 0.7)
+                    )
+                elif hasattr(process_options_data, 'chunk_size'):
+                    # It's a ProcessOptions object
+                    chunk_config = ChunkConfig(
+                        chunk_size=process_options_data.chunk_size,
+                        chunk_overlap=process_options_data.chunk_overlap,
+                        splitter_type=SplitterType(process_options_data.chunking_strategy.value),
+                        semantic_buffer_size=process_options_data.semantic_buffer_size or 1024,
+                        semantic_similarity_threshold=process_options_data.semantic_similarity_threshold or 0.7
+                    )
 
             try:
                 # 1. Get DB Session and instantiate services
@@ -186,7 +212,8 @@ class IngestionProcessor:
 
                         indexing_response = await indexing_svc.index_documents(
                             documents=[doc_to_index],
-                            collection_name=target_collection
+                            collection_name=target_collection,
+                            chunk_config=chunk_config # Pass the custom config
                         )
 
                         if indexing_response.status != "SUCCESS":

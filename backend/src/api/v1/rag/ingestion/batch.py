@@ -136,6 +136,40 @@ async def ingest_batch_multi_collection(
 
             collections_affected.add(assignment.collection)
 
+        # Apply global defaults / optimizations
+        from src.api.v1.rag.models.ingestion import ProcessOptions, ChunkingStrategy
+        
+        # Determine global strategy override
+        global_strategy = request.default_chunking_strategy
+        if request.optimize_for_quality and not global_strategy:
+            global_strategy = ChunkingStrategy.SEMANTIC
+        
+        # Apply to assignments
+        final_assignments = []
+        for val_assignment in validated_assignments:
+            # val_assignment is a dict we just created. We need to check original assignment options.
+            # But we are iterating val_assignments which is dict.
+            # We need to map back or just look at the request.assignments again?
+            # Easier: request.assignments order matches validated_assignments order if we append sequentially.
+            pass 
+        
+        # Better approach: Iterate request.assignments and validated_assignments together
+        for original_assignment, val_data in zip(request.assignments, validated_assignments):
+            # If default strategy set and no specific strategy in assignment, apply default
+            if global_strategy:
+                if not original_assignment.process_options:
+                    # Create new options with default strategy
+                    original_assignment.process_options = ProcessOptions(chunking_strategy=global_strategy)
+                elif original_assignment.process_options.chunking_strategy == ChunkingStrategy.SENTENCE:
+                     # Only upgrade to semantic/other if current is default SENTENCE (and not explicitly set to SENTENCE? 
+                     # Well, default is SENTENCE. If user explicitly sent SENTENCE, maybe they want it.
+                     # But for bulk apply, usually we override defaults.
+                     # Let's assume if it is SENTENCE (default), we override.
+                     original_assignment.process_options.chunking_strategy = global_strategy
+            
+            # Add process_options to validated data structure so processor can find it
+            val_data['process_options'] = original_assignment.process_options
+
         logger.info(f"Validated {len(validated_assignments)} files for {len(collections_affected)} collections")
 
         # STEP 2: Ensure all collections exist and check limits

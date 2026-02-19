@@ -11,8 +11,11 @@ from rank_bm25 import BM25Okapi
 from loguru import logger
 from llama_index.core.schema import TextNode
 
+import os
+
 # Directory for storing BM25 indices
-BM25_INDEX_DIR = Path("/app/data/bm25_indices")
+# Use environment variable if set, otherwise fallback to relative data folder
+BM25_INDEX_DIR = Path(os.getenv("BM25_INDEX_DIR", "data/bm25_indices"))
 BM25_INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
 def _tokenize_text(text: str) -> List[str]:

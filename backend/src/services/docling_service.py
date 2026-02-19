@@ -33,13 +33,21 @@ class DoclingService:
     Integrates repair, analysis, smart routing, and optional LLM refinement.
     """
 
-    SUPPORTED_EXTENSIONS = {
-        '.pdf', '.docx', '.pptx', '.xlsx',
-        '.html', '.md', '.csv'
-    }
+    SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".xlsx", ".html", ".md", ".csv"}
 
     MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
-    CACHE_DIR = Path("/app/cache/docling")  # Persistent cache mounted via Docker
+    # FIX BUG: Use environment variable or temp dir if /app/cache is not writable
+    CACHE_DIR = Path(os.getenv("DOCLING_CACHE_DIR", "/app/cache/docling"))
+    if not os.access(CACHE_DIR.parent, os.W_OK) and not os.access(
+        "/app/cache", os.W_OK
+    ):
+        # Fallback to temp dir if /app/cache is not writable (e.g. in tests)
+        import tempfile
+
+        CACHE_DIR = Path(tempfile.gettempdir()) / "docling_cache"
+
+    # Ensure it's absolute
+    CACHE_DIR = CACHE_DIR.resolve()
     CACHE_TTL_DAYS = 7  # FIX BUG #5: Cache TTL (Time To Live)
 
     def __init__(self):
@@ -141,7 +149,9 @@ class DoclingService:
             # Check file age (TTL: 7 days by default)
             file_age_seconds = time.time() - cache_file.stat().st_mtime
             if file_age_seconds > (self.CACHE_TTL_DAYS * 24 * 3600):
-                self.logger.info(f"Cache expired for {file_hash} (age: {file_age_seconds/86400:.1f} days), removing")
+                self.logger.info(
+                    f"Cache expired for {file_hash} (age: {file_age_seconds / 86400:.1f} days), removing"
+                )
                 cache_file.unlink()
                 return None
 
@@ -151,7 +161,9 @@ class DoclingService:
 
             # Validate cache structure (must have success field)
             if not isinstance(data, dict) or "success" not in data:
-                self.logger.warning(f"Invalid cache structure for {file_hash}, removing")
+                self.logger.warning(
+                    f"Invalid cache structure for {file_hash}, removing"
+                )
                 cache_file.unlink()
                 return None
 
@@ -201,11 +213,15 @@ class DoclingService:
                         cache_file.unlink()
                         removed_count += 1
                 except Exception as e:
-                    self.logger.warning(f"Failed to remove cache file {cache_file}: {e}")
+                    self.logger.warning(
+                        f"Failed to remove cache file {cache_file}: {e}"
+                    )
                     failed_count += 1
 
             if removed_count > 0:
-                self.logger.info(f"Cache cleanup: Removed {removed_count} old files (failed: {failed_count})")
+                self.logger.info(
+                    f"Cache cleanup: Removed {removed_count} old files (failed: {failed_count})"
+                )
         except Exception as e:
             self.logger.error(f"Cache cleanup failed: {e}")
 
@@ -219,8 +235,8 @@ class DoclingService:
 
         # Truncate for safety if too huge (LLM context limits)
         # In a real scenario, we would chunk this.
-        content_sample = markdown_content[:15000] 
-        
+        content_sample = markdown_content[:15000]
+
         prompt = f"""
         You are an expert Document Cleaner. Your task is to fix formatting issues in the following Markdown text, which was extracted from a PDF.
         
@@ -234,10 +250,10 @@ class DoclingService:
         TEXT TO CLEAN:
         {content_sample}
         """
-        
+
         try:
             # We assume rag_client has a method to get the LLM and complete
-            # This depends on how RAGClient exposes the LLM. 
+            # This depends on how RAGClient exposes the LLM.
             # If rag_client.llm is the LlamaIndex LLM:
             response = await rag_client.llm.acomplete(prompt)
             return str(response)
@@ -245,10 +261,15 @@ class DoclingService:
             self.logger.error(f"LLM refinement failed: {e}")
             return markdown_content  # Fallback to original
 
-    async def process_file(self, file_path: str, enable_llm_refinement: bool = False, rag_client: Any = None) -> Dict[str, Any]:
+    async def process_file(
+        self,
+        file_path: str,
+        enable_llm_refinement: bool = False,
+        rag_client: Any = None,
+    ) -> Dict[str, Any]:
         """
         Process a single file through the full pipeline.
-        
+
         Args:
             file_path: Path to file
             enable_llm_refinement: Whether to use LLM to clean up result (slow, costs tokens)
@@ -281,15 +302,23 @@ class DoclingService:
                 metadata["pdf_analysis"] = analysis
 
                 if analysis.get("is_encrypted"):
-                    return {"success": False, "error": "PDF is encrypted", "file_path": file_path}
+                    return {
+                        "success": False,
+                        "error": "PDF is encrypted",
+                        "file_path": file_path,
+                    }
 
                 # Smart Routing Logic
                 # FIX BUG #3: Create converter per-request to prevent memory leak
                 if not analysis.get("has_text", False):
-                    self.logger.info(f"Smart Routing: Detected SCAN/IMAGE PDF. Switching to HEAVY mode (OCR).")
+                    self.logger.info(
+                        f"Smart Routing: Detected SCAN/IMAGE PDF. Switching to HEAVY mode (OCR)."
+                    )
                     converter = self._create_heavy_converter()
                 else:
-                    self.logger.info(f"Smart Routing: Detected DIGITAL PDF. Using FAST mode.")
+                    self.logger.info(
+                        f"Smart Routing: Detected DIGITAL PDF. Using FAST mode."
+                    )
                     converter = self._create_fast_converter()
             else:
                 # Non-PDF files: use fast converter (no OCR needed)
@@ -304,20 +333,53 @@ class DoclingService:
                 result = await asyncio.to_thread(converter.convert, work_path)
 
                 # Export to Markdown
-                markdown_content = result.document.export_to_markdown()
+                # FIX BUG #6 (GitHub Issue #6): Handle IndexError for empty markdown structures
+                # Docling throws "list index out of range" for files with empty headers/lists
+                try:
+                    markdown_content = result.document.export_to_markdown()
+                except IndexError as e:
+                    # Fallback for markdown files with empty structures
+                    if file_path.lower().endswith(".md"):
+                        self.logger.warning(
+                            f"Docling export failed for {Path(file_path).name}, using plaintext fallback: {e}"
+                        )
+                        # Read file as plaintext
+                        try:
+                            with open(file_path, "r", encoding="utf-8") as f:
+                                markdown_content = f.read()
+                        except UnicodeDecodeError:
+                            with open(file_path, "r", encoding="latin-1") as f:
+                                markdown_content = f.read()
+                        metadata["docling_fallback"] = "plaintext"
+                    else:
+                        raise  # Re-raise for non-markdown files
 
                 # 4. Optional LLM Refinement
                 if enable_llm_refinement and rag_client:
                     self.logger.info("Refining content with LLM...")
-                    markdown_content = await self.refine_with_llm(markdown_content, rag_client)
+                    markdown_content = await self.refine_with_llm(
+                        markdown_content, rag_client
+                    )
                     metadata["llm_refined"] = True
+
+                # FIX BUG #6 (GitHub Issue #6): export_to_dict() can also fail with IndexError
+                # for files with empty structures, so wrap it in try-except
+                try:
+                    docling_meta = result.document.export_to_dict().get("metadata", {})
+                except IndexError:
+                    docling_meta = {
+                        "error": "Failed to export metadata - empty document structure"
+                    }
 
                 response = {
                     "success": True,
                     "content": markdown_content,
-                    "metadata": {**metadata, "docling_meta": result.document.export_to_dict().get("metadata", {})},
+                    "metadata": {
+                        **metadata,
+                        "docling_meta": docling_meta,
+                    },
                     "file_path": file_path,
-                    "content_length": len(markdown_content)
+                    "content_length": len(markdown_content),
                 }
 
                 # Save to Cache
@@ -332,23 +394,66 @@ class DoclingService:
                         os.remove(work_path)
                         self.logger.debug(f"Cleaned up repaired PDF: {work_path}")
                     except OSError as e:
-                        self.logger.warning(f"Failed to cleanup temp file {work_path}: {e}")
+                        self.logger.warning(
+                            f"Failed to cleanup temp file {work_path}: {e}"
+                        )
+
+        except IndexError as e:
+            # FIX BUG #6 (GitHub Issue #6): Docling's markdown backend throws IndexError
+            # for files with empty headers or list items (e.g., "## \n" or "- ")
+            # Fallback: Read markdown files as plaintext when Docling fails
+            if file_path.lower().endswith(".md"):
+                self.logger.warning(
+                    f"Docling IndexError for {Path(file_path).name}, using plaintext fallback: {e}"
+                )
+                try:
+                    # Read file as plaintext
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            markdown_content = f.read()
+                    except UnicodeDecodeError:
+                        with open(file_path, "r", encoding="latin-1") as f:
+                            markdown_content = f.read()
+
+                    response = {
+                        "success": True,
+                        "content": markdown_content,
+                        "metadata": {"docling_fallback": "plaintext", "error": str(e)},
+                        "file_path": file_path,
+                        "content_length": len(markdown_content),
+                    }
+
+                    # Save to Cache
+                    self._save_to_cache(file_hash, response)
+
+                    return response
+
+                except Exception as fallback_error:
+                    return {
+                        "success": False,
+                        "error": f"Docling failed with: {e}, plaintext fallback also failed: {fallback_error}",
+                        "file_path": file_path,
+                    }
+            else:
+                # Re-raise for non-markdown files
+                self.logger.error(f"Failed to process {file_path}: {e}")
+                return {"success": False, "error": str(e), "file_path": file_path}
 
         except Exception as e:
             self.logger.error(f"Failed to process {file_path}: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "file_path": file_path
-            }
+            return {"success": False, "error": str(e), "file_path": file_path}
 
-    def process_directory(self, directory_path: str, recursive: bool = True) -> List[Dict]:
+    def process_directory(
+        self, directory_path: str, recursive: bool = True
+    ) -> List[Dict]:
         """Process all supported files in a directory (Sync wrapper for compatibility)."""
-        # Note: This method is synchronous but process_file is async. 
+        # Note: This method is synchronous but process_file is async.
         # For full directory processing, we should use an async runner.
         # This is a simplified version that might block.
         # Ideally, callers should use process_file individually.
-        self.logger.warning("process_directory is deprecated for heavy workloads. Use process_file.")
+        self.logger.warning(
+            "process_directory is deprecated for heavy workloads. Use process_file."
+        )
         return []
 
     def get_supported_extensions(self) -> List[str]:

@@ -71,11 +71,11 @@ class RAGClient:
         if self.edition == Edition.DEVELOPER:
             all_collections = await self.collection_manager.list_collections()
             if not all_collections.is_success:
-                return RAGResponse.error("Failed to check collection limits")
+                return RAGResponse.fail("Failed to check collection limits")
 
             current_count = len(all_collections.data) if all_collections.data else 0
             if not FeatureLimits.check_collection_limit(current_count, self.edition):
-                return RAGResponse.error(
+                return RAGResponse.fail(
                     "Collection limit exceeded for Developer Edition. "
                     f"Maximum {FeatureLimits.get_limit_value('max_collections', self.edition)} collection(s) allowed. "
                     "Upgrade to Team Edition for more collections."
@@ -134,13 +134,13 @@ class RAGClient:
 
         # Check if advanced features are enabled for current edition
         if use_advanced_pipeline and not FeatureLimits.is_feature_enabled("advanced_rag", self.edition):
-            return RAGResponse.error(
+            return RAGResponse.fail(
                 "Advanced RAG pipeline is not available in Developer Edition. "
                 "Upgrade to Team Edition to use this feature."
             )
 
         if use_reranker and not FeatureLimits.is_feature_enabled("cross_encoder_reranking", self.edition):
-            return RAGResponse.error(
+            return RAGResponse.fail(
                 "Cross-encoder reranking is not available in Developer Edition. "
                 "Upgrade to Team Edition to use this feature."
             )
@@ -148,7 +148,7 @@ class RAGClient:
         # For Developer Edition, only allow queries on one collection at a time
         if (collection_names and len(collection_names) > 1 and
             not FeatureLimits.is_feature_enabled("multi_collection_search", self.edition)):
-            return RAGResponse.error(
+            return RAGResponse.fail(
                 "Multi-collection search is not available in Developer Edition. "
                 "Upgrade to Team Edition to search across multiple collections simultaneously."
             )
@@ -357,7 +357,7 @@ Please answer based on your general knowledge."""
 
         # Check if advanced features are enabled for current edition
         if use_parent_child and not FeatureLimits.is_feature_enabled("advanced_rag", self.edition):
-            return RAGResponse.error(
+            return RAGResponse.fail(
                 "Parent-child document strategy is not available in Developer Edition. "
                 "Upgrade to Team Edition to use this feature."
             )
@@ -372,7 +372,7 @@ Please answer based on your general knowledge."""
                     new_count = current_count + len(documents)
 
                     if not FeatureLimits.check_document_limit(new_count, self.edition):
-                        return RAGResponse.error(
+                        return RAGResponse.fail(
                             "Document limit exceeded for Developer Edition. "
                             f"Maximum {FeatureLimits.get_limit_value('max_documents_per_collection', self.edition)} documents per collection allowed. "
                             "Upgrade to Team Edition for more documents."

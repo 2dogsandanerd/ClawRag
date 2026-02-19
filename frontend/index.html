@@ -587,6 +587,19 @@
                 </div>
                 <div class="grid-2">
                     <div class="form-group">
+                        <label>Chunking Strategy</label>
+                        <select id="upload-strategy" onchange="toggleSemanticParams('upload')">
+                            <option value="sentence">Standard (Sentence)</option>
+                            <option value="semantic">Semantic (High Quality)</option>
+                        </select>
+                    </div>
+                    <div id="upload-semantic-config" style="display: none;" class="form-group">
+                        <label>Similarity Threshold (0.1 - 0.95)</label>
+                        <input type="number" id="upload-semantic-threshold" value="0.7" step="0.05" min="0.1" max="0.95">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
                         <label>Chunk Size</label>
                         <input type="number" id="upload-chunk-size" value="512">
                     </div>
@@ -651,6 +664,20 @@
                     </div>
                 </div>
 
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Chunking Strategy</label>
+                        <select id="ingest-strategy" onchange="toggleSemanticParams('ingest')">
+                            <option value="sentence">Standard (Sentence)</option>
+                            <option value="semantic">Semantic (High Quality)</option>
+                        </select>
+                    </div>
+                    <div id="ingest-semantic-config" style="display: none;" class="form-group">
+                        <label>Similarity Threshold (0.1 - 0.95)</label>
+                        <input type="number" id="ingest-semantic-threshold" value="0.7" step="0.05" min="0.1" max="0.95">
+                    </div>
+                </div>
+
                 <div style="display: flex; gap: 12px;">
                     <button onclick="startIngestion()" style="flex: 1;">Start Ingestion</button>
                 </div>
@@ -675,6 +702,13 @@
         const API_URL = '/api/v1/rag';
         let currentTaskId = null;
         let pollInterval = null;
+
+        // Semantic Toggle logic
+        function toggleSemanticParams(prefix) {
+            const strategy = document.getElementById(`${prefix}-strategy`).value;
+            const configDiv = document.getElementById(`${prefix}-semantic-config`);
+            configDiv.style.display = strategy === 'semantic' ? 'block' : 'none';
+        }
 
         // Switch tabs
         function switchTab(tabName) {
@@ -1068,6 +1102,8 @@
             const files = document.getElementById('upload-files').files;
             const chunkSize = document.getElementById('upload-chunk-size').value;
             const chunkOverlap = document.getElementById('upload-chunk-overlap').value;
+            const strategy = document.getElementById('upload-strategy').value;
+            const threshold = document.getElementById('upload-semantic-threshold').value;
 
             if (!collection || files.length === 0) {
                 showAlert('upload-alert', 'Please select a collection and files', 'error');
@@ -1087,6 +1123,10 @@
                 formData.append('collection_name', collection);
                 formData.append('chunk_size', chunkSize);
                 formData.append('chunk_overlap', chunkOverlap);
+                formData.append('chunking_strategy', strategy);
+                if (strategy === 'semantic') {
+                    formData.append('semantic_similarity_threshold', threshold);
+                }
 
                 for (const file of files) {
                     formData.append('files', file);
@@ -1188,6 +1228,8 @@
             let path = document.getElementById('ingest-path').value.trim();
             const collection = document.getElementById('ingest-collection').value.trim();
             const profile = document.getElementById('ingest-profile').value;
+            const strategy = document.getElementById('ingest-strategy').value;
+            const threshold = document.getElementById('ingest-semantic-threshold').value;
 
             if (!path || !collection) {
                 showAlert('ingest-alert', 'Please fill in all fields', 'error');
@@ -1209,22 +1251,27 @@
             progressFill.style.width = '5%';
             statusEl.textContent = '🚀 Starting ingestion...';
 
-            console.log('📤 Sending ingestion request:', {
+            const payload = {
                 folder_path: path,
                 collection_name: collection,
-                profile: profile
-            });
+                profile: profile,
+                recursive: true,
+                default_chunking_strategy: strategy
+            };
+
+            if (strategy === 'semantic') {
+                payload.optimize_for_quality = true;
+                // Note: The backend IngestBatchRequest validator we fixed
+                // will automatically set all assignments to semantic if optimize_for_quality is true.
+            }
+
+            console.log('📤 Sending ingestion request:', payload);
 
             try {
                 const res = await fetch(`${API_URL}/ingest-folder`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        folder_path: path,
-                        collection_name: collection,
-                        profile: profile,
-                        recursive: true
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await res.json();
